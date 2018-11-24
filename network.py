@@ -64,9 +64,12 @@ class LocalFuser(nn.Module):
     def __init__(self ):
         super(LocalFuser,self).__init__()
     def forward( self , f_left_eye , f_right_eye , f_nose , f_mouth):
-        EYE_W , EYE_H = 40 , 40 
+        EYE_W , EYE_H = 40 , 40
         NOSE_W , NOSE_H = 40 , 32
         MOUTH_W , MOUTH_H = 48 , 32
+        # EYE_W, EYE_H = 40, 40
+        # NOSE_W, NOSE_H = 40, 40
+        # MOUTH_W, MOUTH_H = 40, 40
         IMG_SIZE = 128
         f_left_eye = torch.nn.functional.pad(f_left_eye , (39 - EYE_W//2  - 1 ,IMG_SIZE - (39 + EYE_W//2 - 1) ,40 - EYE_H//2 - 1, IMG_SIZE - (40 + EYE_H//2 - 1)))
         f_right_eye = torch.nn.functional.pad(f_right_eye,(86 - EYE_W//2  - 1 ,IMG_SIZE - (86 + EYE_W//2 - 1) ,39 - EYE_H//2 - 1, IMG_SIZE - (39 + EYE_H//2 - 1)))
@@ -112,7 +115,7 @@ class GlobalPathway(nn.Module):
                                     *[ ResidualBlock( 512 , 512 , 3 , 1 , 1 , "kaiming" , nn.LeakyReLU(1e-2) , is_bottleneck = False , scaling_factor = scaling_factor) for i in range(4) ]
                                   )
         self.fc1 = nn.Linear( n_fm_encoder[4]*8*8 , 512)
-        self.fc2 = nn.MaxPool1d( 2 , 2 , 0)
+        self.fc2 = nn.AvgPool1d( 2 , 2 , 0)
         torch.nn.functional.max_pool1d
         #decoder
         self.initial_8    = deconv( 256 + self.zdim , n_fm_decoder_initial[0] , 8 , 1 , 0 , 0 , "kaiming" , nn.ReLU() , use_batchnorm)
@@ -149,7 +152,7 @@ class GlobalPathway(nn.Module):
         self.conv5 = sequential( conv( self.reconstruct_128.out_channels , n_fm_decoder_conv[0] , 5 , 1 , 2 , 'kaiming' , nn.LeakyReLU() , use_batchnorm  ) , \
                 ResidualBlock(n_fm_decoder_conv[0] , kernel_size = 3 , activation = nn.LeakyReLU() ))
         self.conv6 = conv( n_fm_decoder_conv[0] , n_fm_decoder_conv[1] , 3 , 1 , 1 , 'kaiming' , nn.LeakyReLU() , use_batchnorm )
-        self.decoded_img128 = conv( n_fm_decoder_conv[1] , 3 , 3 , 1 , 1 , None , activation = None )
+        self.decoded_img128 = conv( n_fm_decoder_conv[1] , 3 , 3 , 1 , 1 , None , activation = nn.Tanh() )
 
     def forward(self, I128 , I64 , I32 ,  local_predict , local_feature , z ):
         #encoder
@@ -202,8 +205,8 @@ class FeaturePredict(nn.Module):
         super(FeaturePredict,self).__init__()
         self.dropout = nn.Dropout(p=dropout)
         self.fc = nn.Linear(global_feature_layer_dim , num_classes )
-    def forward(self ,x ,use_dropout):
-        if use_dropout:
+    def forward(self ,x, dropout) :
+        if dropout == True:
             x = self.dropout(x)
         x = self.fc(x)
         return x
@@ -220,7 +223,7 @@ class Generator(nn.Module):
         self.local_fuser    = LocalFuser()
         self.feature_predict = FeaturePredict(num_classes)
 
-    def forward( self, I128 , I64 , I32 , left_eye , right_eye , nose , mouth , z , use_dropout ):
+    def forward( self, I128 , I64 , I32 , left_eye , right_eye , nose , mouth , z , dropout):
 
         #pass through local pathway
         le_fake , le_fake_feature = self.local_pathway_left_eye( left_eye)
@@ -237,7 +240,7 @@ class Generator(nn.Module):
         #pass through global pathway
         #fc1 , I_fake = self.global_pathway( I128 , I64 , I32 , local ,z)
         I128_fake , I64_fake , I32_fake , encoder_feature = self.global_pathway( I128 , I64 , I32 , local_vision , local_feature , z)
-        encoder_predict = self.feature_predict( encoder_feature , use_dropout )
+        encoder_predict = self.feature_predict( encoder_feature ,dropout)
         
         return I128_fake , I64_fake , I32_fake , encoder_predict , local_vision , le_fake , re_fake , nose_fake , mouth_fake , local_input
 
