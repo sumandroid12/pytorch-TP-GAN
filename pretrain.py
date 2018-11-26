@@ -103,16 +103,16 @@ if __name__ == "__main__":
             predicts , features = stem( batch['img'] , use_dropout = True  )
             train_acc , train_loss  = compute_loss(predicts  ,  batch['label'] )
 
-            train_acc_log_list.append( train_acc.data.cpu().numpy()[0] )
-            train_loss_log_list.append( train_loss.data.cpu().numpy()[0] )
-            train_loss_epoch_list.append( train_loss.data.cpu().numpy()[0] )
+            train_acc_log_list.append( train_acc.item() )
+            train_loss_log_list.append( train_loss.item() )
+            train_loss_epoch_list.append( train_loss.item() )
 
             optimizer.zero_grad()
             train_loss.backward()
             optimizer.step()
 
-            tb.add_scalar( 'loss' , train_loss.data.cpu().numpy() , epoch*len(train_dataloader) + step , 'train') 
-            tb.add_scalar( 'acc' , train_acc.data.cpu().numpy() , epoch*len(train_dataloader) + step , 'train' )
+            tb.add_scalar( 'loss' , train_loss.item() , epoch*len(train_dataloader) + step , 'train')
+            tb.add_scalar( 'acc' , train_acc.item() , epoch*len(train_dataloader) + step , 'train' )
             tb.add_scalar( 'lr' , optimizer.param_groups[0]['lr'] , epoch*len(train_dataloader) , 'train')
 
             if  step % config.train['log_step'] == 0 :
@@ -145,7 +145,7 @@ if __name__ == "__main__":
                     #    best_val_acc = val_acc
                     #    best_model = copy.copy( stem )
 
-                    log_msg = "epoch {} , step {} / {} , train_loss {:.5f}, train_acc {:.2%} , val_loss {:.5f} , val_acc {:.2%} {:.1f} imgs/s".format(epoch,step,len(train_dataloader) - 1,train_loss,train_acc,val_loss.data.cpu().numpy()[0],val_acc.data.cpu().numpy()[0],config.train['log_step']*config.train['batch_size']/(tt -t)) 
+                    log_msg = "epoch {} , step {} / {} , train_loss {:.5f}, train_acc {:.2%} , val_loss {:.5f} , val_acc {:.2%} {:.1f} imgs/s".format(epoch,step,len(train_dataloader) - 1,train_loss,train_acc,val_loss.item(),val_acc.item(),config.train['log_step']*config.train['batch_size']/(tt -t))
                     print(log_msg )
                     log_file.write(log_msg +'\n')
                     

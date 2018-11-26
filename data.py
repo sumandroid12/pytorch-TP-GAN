@@ -51,10 +51,12 @@ class TrainDataset( Dataset):
             batch[patch_name] = Image.open( '/'.join(img_name[:-2] + ['patch' , patch_name , img_name[-1] ]) ) 
             batch[patch_name+'_frontal'] = Image.open( '/'.join(img_frontal_name[:-2] + ['patch' , patch_name , img_frontal_name[-1] ]) )
         totensor = transforms.ToTensor()
+        normalize = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 
         for k in batch:
-            batch[k] = totensor( batch[k] ) 
-            batch[k] = batch[k] *2.0 -1.0
+            batch[k] = normalize(totensor( batch[k] ))
+            # batch[k] = batch[k] *2.0 -1.0
+
             #if batch[k].max() <= 0.9:
             #    print( "{} {} {}".format( batch[k].max(), self.img_list[idx] , k  ))
             #if batch[k].min() >= -0.9:

@@ -23,6 +23,7 @@ class TensorBoardX:
                 self.writer['train'] = SummaryWriter(self.path+'/train')
                 self.writer['val'] = SummaryWriter( self.path + '/val' )
                 self.writer['test'] = SummaryWriter( self.path +'/test' )
+                self.writer['graph'] = SummaryWriter( self.path +'/graph' ,comment='graph')
                 for config_filename in config_filename_list:
                     os.system('cp {} {}/'.format(config_filename , self.path))
                 break
@@ -41,9 +42,19 @@ class TensorBoardX:
         self.writer[logtype].add_image(index, x, niter)
 
     def add_graph(self, index, x_input, model , logtype):
-        torch.onnx.export(model, x_input, os.path.join(self.path, "{}.proto".format(index)), verbose=True)
-        self.writer[logtype].add_graph_onnx(os.path.join(self.path, "{}.proto".format(index)))
+        # torch.onnx.export(model, x_input, os.path.join(self.path, "{}.proto".format(index)), verbose=True)
+        # self.writer[logtype].add_graph_onnx(os.path.join(self.path, "{}.proto".format(index)))
+        self.writer[logtype].add_graph(model, x_input)
 
     def export_json(self, out_file , logtype ):
         self.writer[logtype].export_scalars_to_json(out_file)
+        self.writer[logtype].add_image()
+
+    def add_weights(self, index, model, niter, logtype):
+        for name, param in model.named_parameters():
+            self.writer[logtype].add_histogram(index + name, param, niter)
+
+    def add_gradients(self, index, model, niter, logtype):
+        for name, param in model.named_parameters():
+            self.writer[logtype].add_histogram(index + name, param.grad, niter)
 

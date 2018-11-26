@@ -82,6 +82,8 @@ if __name__ == "__main__":
     if test_time:
         tt = time.time()
 
+    D_loss = G_loss = 200
+
     for epoch in range( last_epoch + 1  , config.train['num_epochs']):
         for step,batch in enumerate(dataloader):
             #if epoch==0:
@@ -89,11 +91,11 @@ if __name__ == "__main__":
             #    optimizer_D.param_groups[0]['lr'] = config.train['learning_rate'] * lr_warmup(  step , len(dataloader) )
             if test_time:
                 print("step : ", step)
-                t_pre = time.time() 
+                t_pre = time.time()
                 print("preprocess time : ",t_pre - tt )
                 tt = t_pre
             for k in  batch:
-                batch[k] =  Variable( batch[k].cuda(async = True) , requires_grad = False ) 
+                batch[k] =  Variable( batch[k].cuda(async = True) , requires_grad = False )
             z = Variable( torch.FloatTensor( np.random.uniform(-1,1,(len(batch['img']),config.G['zdim'])) ).cuda() )
             if test_time:
                 t_mv_to_cuda = time.time()
@@ -112,10 +114,10 @@ if __name__ == "__main__":
 
             # compute loss and backward
             #L_D = torch.mean( - torch.log( D(img_frontal)) - torch.log( 1 -  D(img128_fake.detach()))  )
-            adv_D_loss = - torch.mean( D( batch['img_frontal'] )  ) + torch.mean( D( img128_fake.detach() ) )  
+            adv_D_loss = - torch.mean( D( batch['img_frontal'] )  ) + torch.mean( D( img128_fake.detach() ) )
             #compute the gradient penalty
             alpha = torch.rand( batch['img_frontal'].shape[0] , 1 , 1 , 1 ).expand_as(batch['img_frontal']).pin_memory().cuda()
-            interpolated_x = Variable( alpha * img128_fake.detach().data   + (1.0 - alpha) * batch['img_frontal'].data , requires_grad = True) 
+            interpolated_x = Variable( alpha * img128_fake.detach().data   + (1.0 - alpha) * batch['img_frontal'].data , requires_grad = True)
             out = D(interpolated_x)
             dxdD = torch.autograd.grad( outputs = out , inputs = interpolated_x , grad_outputs = torch.ones(out.size()).cuda() , retain_graph = True , create_graph = True , only_inputs = True  )[0].view(out.shape[0],-1)
             gp_loss = torch.mean( ( torch.norm( dxdD , p = 2 ) - 1 )**2 )
@@ -127,7 +129,7 @@ if __name__ == "__main__":
             optimizer_D.step()
 
             set_requires_grad( D , False )
-            adv_G_loss = - torch.mean( D(img128_fake) )   
+            adv_G_loss = - torch.mean( D(img128_fake) )
             pixelwise_128_loss = l1_loss( img128_fake , batch['img_frontal'])
             pixelwise_64_loss = l1_loss( img64_fake , batch['img64_frontal'])
             pixelwise_32_loss = l1_loss( img32_fake , batch['img32_frontal'])
@@ -150,9 +152,9 @@ if __name__ == "__main__":
             inv_idx32 = torch.arange(img32_fake.size()[3]-1, -1, -1).long().cuda()
             img32_fake_flip = img32_fake.index_select(3, Variable( inv_idx32))
             img32_fake_flip.detach_()
-            symmetry_128_loss  = l1_loss( img128_fake , img128_fake_flip ) 
-            symmetry_64_loss  = l1_loss( img64_fake , img64_fake_flip ) 
-            symmetry_32_loss  = l1_loss( img32_fake , img32_fake_flip ) 
+            symmetry_128_loss  = l1_loss( img128_fake , img128_fake_flip )
+            symmetry_64_loss  = l1_loss( img64_fake , img64_fake_flip )
+            symmetry_32_loss  = l1_loss( img32_fake , img32_fake_flip )
             symmetry_loss = config.loss['weight_128'] * symmetry_128_loss + config.loss['weight_64'] * symmetry_64_loss + config.loss['weight_32'] * symmetry_32_loss
 
 
@@ -160,10 +162,10 @@ if __name__ == "__main__":
             feature_frontal , fc_frontal = feature_extract_model( to_gray(batch['img_frontal']) )
             feature_predict , fc_predict = feature_extract_model( to_gray(img128_fake ))
 
-            #ip_loss =  mse(  avgpool_predict , avgpool_frontal.detach() ) +  mse( fc1_predict  , fc1_frontal.detach()  ) 
+            #ip_loss =  mse(  avgpool_predict , avgpool_frontal.detach() ) +  mse( fc1_predict  , fc1_frontal.detach()  )
             ip_loss = mse( feature_predict , feature_frontal.detach() )
 
-            tv_loss = torch.mean( torch.abs(  img128_fake[:,:,:-1,:] - img128_fake[:,:,1:,:] ) )  + torch.mean(  torch.abs( img128_fake[:,:,:,:-1] - img128_fake[:,:,:,1:] ) )  
+            tv_loss = torch.mean( torch.abs(  img128_fake[:,:,:-1,:] - img128_fake[:,:,1:,:] ) )  + torch.mean(  torch.abs( img128_fake[:,:,:,:-1] - img128_fake[:,:,:,1:] ) )
 
             cross_entropy_loss =  cross_entropy( G_encoder_outputs , batch['label'] )
             L_syn = config.loss['weight_pixelwise']*pixelwise_loss \
@@ -184,6 +186,9 @@ if __name__ == "__main__":
                 print("backward time : ",t_backward - tt )
                 tt = t_backward
 
+            D_loss = L_D.data.cpu().numpy()
+            G_loss = L_G.data.cpu().numpy()
+
             tb.add_scalar( "D_loss" , L_D.data.cpu().numpy() , epoch*len(dataloader) + step , 'train' )
             tb.add_scalar( "G_loss" , L_G.data.cpu().numpy() , epoch*len(dataloader) + step , 'train' )
             tb.add_scalar( "adv_D_loss" , adv_D_loss.data.cpu().numpy() , epoch*len(dataloader) + step , 'train' )
@@ -202,19 +207,25 @@ if __name__ == "__main__":
                 t_numpy = time.time()
                 print("numy time: " , t_numpy - tt )
                 tt = t_numpy
-                    
+
             if step % 10 == 0:
                 print(step)
             if step% config.train['log_step'] == 0 :
                 new_t = time.time()
                 print( "epoch {} , step {} / {} , adv_D_loss {:.3f} , gradient_penalty_loss {:.3f} , G_loss {:.3f} , pixelwise_loss {:.3f} , pixelwise_local_loss {:.3f} , symmetry_loss {:.3f} , adv_G_loss {:.3f} , identity_preserving_loss {:.3f} , total_variation_loss {:.3f} , cross_entropy_loss {:.3f} ,  {:.1f} imgs/s".format( epoch , step , len(dataloader ) , adv_D_loss.item() , gp_loss.item() , L_G.item() ,  pixelwise_loss.item() , pixelwise_local_loss.item() , symmetry_loss.item() , adv_G_loss.item() , ip_loss.item() , tv_loss.item() , cross_entropy_loss.item() , config.train['log_step']*config.train['batch_size'] / ( new_t - t ) ) )
                 tb.add_image_grid( "grid/predict" , 4 , img128_fake.data.float() / 2.0 + 0.5 , epoch*len(dataloader) + step , 'train')
-                tb.add_image_grid( "grid/frontal" , 4 , to_gray(batch['img_frontal']).data.float() / 2.0 + 0.5 , epoch*len(dataloader) + step , 'train')
+                tb.add_image_grid( "grid/frontal" , 4 , batch['img_frontal'].data.float() / 2.0 + 0.5 , epoch*len(dataloader) + step , 'train')
                 tb.add_image_grid( "grid/profile" , 4 , batch['img'].data.float() / 2.0 + 0.5 , epoch*len(dataloader) + step , 'train')
                 tb.add_image_grid( "grid/local" , 4 , local_predict.data.float() / 2.0 + 0.5 , epoch*len(dataloader) + step  , 'train' )
                 tb.add_image_grid( "grid/local_input" , 4 , local_input.data.float() / 2.0 + 0.5 , epoch*len(dataloader) + step  , 'train' )
                 tb.add_gradients('G/Gradients/', G, epoch*len(dataloader) + step , 'train')
                 tb.add_weights('G/weights/', G, epoch*len(dataloader) + step , 'train')
+            if step % 5000 == 0:
+                save_model(G, tb.path, epoch)
+                save_model(D, tb.path, epoch)
+                save_optimizer(optimizer_G, G, tb.path, epoch)
+                save_optimizer(optimizer_D, D, tb.path, epoch)
+                print("Save done at {}".format(tb.path))
 
                 #tb.add_image_grid( "grid/left_eye" , 4 , left_eye_patch.data.float() / 2.0 + 0.5 , epoch* len( dataloader) + step , 'train')
                 t = new_t

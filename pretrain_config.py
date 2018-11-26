@@ -7,11 +7,11 @@ train = {}
 train['train_img_list'] = 'pretrain_train.list'
 train['val_img_list'] = 'pretrain_val.list'
 
-train['batch_size'] = 128
+train['batch_size'] = 4
 train['num_epochs'] = 35
 train['log_step'] = 100
 
-train['optimizer'] = 'SGD'
+train['optimizer'] = 'Adam'
 train['learning_rate'] = 1e-1
 train['momentum'] = 0.9
 train['nesterov'] = True 
@@ -32,7 +32,7 @@ train['lr_scheduler_milestones'] = [10,20,30]
 
 stem = {}
 model_name = ['mobilenetv2' , 'resnet18' ]
-stem['model_name'] = 'mobilenetv2'
+stem['model_name'] = 'resnet18'
 stem['num_classes'] = num_classes
 
 assert stem['model_name'] in model_name
