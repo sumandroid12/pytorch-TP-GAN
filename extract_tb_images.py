@@ -28,3 +28,11 @@ os.makedirs(output_dir, exist_ok=True)
 
 
 save_images_from_event(ev, tag, output_dir)
+
+ev = 'save/try_2/train/events.out.tfevents.1543356594.gpu-pc'
+tag = 'grid/frontal'
+output_dir = './gen_images/' + ev.split('/')[1] + '/' + tag.split('/')[-1] + '/'
+os.makedirs(output_dir, exist_ok=True)
+
+
+save_images_from_event(ev, tag, output_dir)

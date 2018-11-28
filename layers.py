@@ -3,6 +3,7 @@ from torch.autograd.variable import Variable
 import torch
 import torch.nn as nn
 from torch.nn.init import xavier_normal , kaiming_normal
+from torch.nn.utils import spectral_norm
 
 def gaussian(ins, is_training, stddev=0.2):
     if is_training:
@@ -43,7 +44,7 @@ def conv( in_channels , out_channels , kernel_size , stride = 1  , padding  = 0 
             padding = 0
 
     #print(padding)
-    convs.append( nn.Conv2d( in_channels , out_channels , kernel_size , stride , padding ) )
+    convs.append( spectral_norm(nn.Conv2d( in_channels , out_channels , kernel_size , stride , padding ) ))
     #weight init
     weight_initialization( convs[-1].weight , init , activation )
     #activation
@@ -52,14 +53,14 @@ def conv( in_channels , out_channels , kernel_size , stride = 1  , padding  = 0 
     #bn
     if use_batchnorm:
         # convs.append( nn.BatchNorm2d( out_channels ) )
-        convs.append(nn.GroupNorm(num_groups=4, num_channels=out_channels))
+        convs.append(nn.GroupNorm(num_groups=8, num_channels=out_channels))
     seq = nn.Sequential( *convs )
     seq.out_channels = out_channels
     return seq
 
 def deconv( in_channels , out_channels , kernel_size , stride = 1  , padding  = 0 ,  output_padding = 0 , init = "kaiming" , activation = nn.ReLU() , use_batchnorm = False):
     convs = []
-    convs.append( nn.ConvTranspose2d( in_channels , out_channels , kernel_size , stride ,  padding , output_padding ) )
+    convs.append( spectral_norm(nn.ConvTranspose2d( in_channels , out_channels , kernel_size , stride ,  padding , output_padding ) ))
     #weight init
     weight_initialization( convs[0].weight , init , activation )
     #activation
@@ -68,7 +69,7 @@ def deconv( in_channels , out_channels , kernel_size , stride = 1  , padding  = 
     #bn
     if use_batchnorm:
         # convs.append( nn.BatchNorm2d( out_channels ) )
-        convs.append( nn.GroupNorm(num_groups=4, num_channels= out_channels ) )
+        convs.append( nn.GroupNorm(num_groups=8, num_channels= out_channels ) )
     seq = nn.Sequential( *convs )
     seq.out_channels = out_channels
     return seq
