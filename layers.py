@@ -1,6 +1,14 @@
 #wrappers for convenience
+from torch.autograd.variable import Variable
+import torch
 import torch.nn as nn
 from torch.nn.init import xavier_normal , kaiming_normal
+
+def gaussian(ins, is_training, stddev=0.2):
+    if is_training:
+        return ins + Variable(torch.randn(ins.size()).cuda() * stddev)
+    return ins
+
 
 def sequential(*kargs ):
     seq = nn.Sequential(*kargs)
@@ -43,7 +51,8 @@ def conv( in_channels , out_channels , kernel_size , stride = 1  , padding  = 0 
         convs.append( activation )
     #bn
     if use_batchnorm:
-        convs.append( nn.BatchNorm2d( out_channels ) )
+        # convs.append( nn.BatchNorm2d( out_channels ) )
+        convs.append(nn.GroupNorm(num_groups=4, num_channels=out_channels))
     seq = nn.Sequential( *convs )
     seq.out_channels = out_channels
     return seq
@@ -58,7 +67,8 @@ def deconv( in_channels , out_channels , kernel_size , stride = 1  , padding  = 
         convs.append( activation )
     #bn
     if use_batchnorm:
-        convs.append( nn.BatchNorm2d( out_channels ) )
+        # convs.append( nn.BatchNorm2d( out_channels ) )
+        convs.append( nn.GroupNorm(num_groups=4, num_channels= out_channels ) )
     seq = nn.Sequential( *convs )
     seq.out_channels = out_channels
     return seq

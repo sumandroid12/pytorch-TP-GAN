@@ -67,7 +67,7 @@ if __name__ == "__main__":
     feature_extract_model = light_cnn.LightCNN_29Layers_v2(num_classes=80013)
     feature_extract_model = torch.nn.DataParallel(feature_extract_model).cuda()
 
-    light_cnn_model_path = '/home/gpu/PycharmProjects/pytorch-TP-GAN/save/feature_extract_model/lightcnn/LightCNN_29Layers_V2_checkpoint.pth.tar'
+    light_cnn_model_path = 'models/feature_extract_model/lightcnn/LightCNN_29Layers_V2_checkpoint.pth.tar'
     feature_extract_model.load_state_dict(torch.load(light_cnn_model_path)['state_dict'])
     # resume_model(feature_extract_model, config.feature_extract_model['resume'], strict = True)
     feature_extract_model = torch.nn.DataParallel(feature_extract_model).cuda()

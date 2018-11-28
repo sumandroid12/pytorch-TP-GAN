@@ -265,5 +265,6 @@ class Discriminator(nn.Module):
         self.model = sequential( *layers )
 
     def forward(self,x):
+        x = gaussian(x, is_training=True)
         return self.model(x)
 
